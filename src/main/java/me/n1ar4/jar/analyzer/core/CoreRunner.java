@@ -28,6 +28,7 @@ import me.n1ar4.jar.analyzer.starter.Const;
 import me.n1ar4.jar.analyzer.utils.CoreUtil;
 import me.n1ar4.jar.analyzer.utils.DirUtil;
 import me.n1ar4.jar.analyzer.utils.IOUtil;
+import me.n1ar4.jar.analyzer.utils.SourceExportUtil;
 import me.n1ar4.jar.analyzer.utils.StackMapFrameHandler;
 import me.n1ar4.log.LogManager;
 import me.n1ar4.log.Logger;
@@ -51,6 +52,11 @@ public class CoreRunner {
     private static boolean quickMode = false;
 
     public static void run(Path jarPath, Path rtJarPath, boolean fixClass, JDialog dialog) {
+        run(jarPath, rtJarPath, fixClass, false, dialog);
+    }
+
+    public static void run(Path jarPath, Path rtJarPath, boolean fixClass,
+                           boolean exportSources, JDialog dialog) {
         // Clear corrupted files tracking at the start of each analysis
         AnalyzeEnv.corruptedFiles.clear();
 
@@ -171,6 +177,16 @@ public class CoreRunner {
             }
             cfs = CoreUtil.getAllClassesFromJars(jarList, jarIdMap);
         }
+
+        if (exportSources) {
+            int exported = SourceExportUtil.export(
+                    cfs, Paths.get(Const.tempDir));
+            String result = "export matched source code: "
+                    + exported + "/" + cfs.size();
+            logger.info(result);
+            LogUtil.info(result);
+        }
+
         // BUG CLASS NAME
         for (ClassFileEntity cf : cfs) {
             String className = cf.getClassName();

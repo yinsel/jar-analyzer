@@ -100,6 +100,8 @@ public class BuildAction {
         }
 
         boolean fixClass = MenuUtil.getFixClassPathConfig().getState();
+        boolean exportSources = MainForm.getInstance()
+                .getExportSourceCheckBox().isSelected();
 
         JDialog dialog = ProcessDialog.createProgressDialog(MainForm.getInstance().getMasterPanel());
 
@@ -116,9 +118,11 @@ public class BuildAction {
                         "rt.jar file not exist");
                 return;
             }
-            new Thread(() -> CoreRunner.run(Paths.get(path), rtJarPath, fixClass, dialog)).start();
+            new Thread(() -> CoreRunner.run(Paths.get(path), rtJarPath,
+                    fixClass, exportSources, dialog)).start();
         } else {
-            new Thread(() -> CoreRunner.run(Paths.get(path), null, fixClass, dialog)).start();
+            new Thread(() -> CoreRunner.run(Paths.get(path), null,
+                    fixClass, exportSources, dialog)).start();
         }
         MainForm.getInstance().getStartBuildDatabaseButton().setEnabled(false);
     }
