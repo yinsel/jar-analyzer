@@ -76,6 +76,51 @@ class JarUtilPathTest {
                 () -> JarUtil.safeExtractionPath(root, "linked/pwn.xml"));
     }
 
+    @Test
+    void copiesMatchedClassToSiblingDirectoryByPackagePath() throws Exception {
+        Path workDir = Files.createDirectory(tempDir.resolve("work"));
+        Path analyzerTemp = Files.createDirectory(
+                workDir.resolve("jar-analyzer-temp"));
+        Path source = JarUtil.safeExtractionPath(analyzerTemp,
+                "BOOT-INF/classes/com/example/ApiHandler.class");
+        byte[] classBytes = new byte[]{1, 2, 3, 4};
+        Files.write(source, classBytes);
+
+        Path exported = JarUtil.copyMatchedClass(source, analyzerTemp,
+                "BOOT-INF/classes/com/example/ApiHandler.class");
+
+        Path expected = workDir.resolve(
+                "classes/com/example/ApiHandler.class").toAbsolutePath().normalize();
+        assertEquals(expected, exported);
+        assertArrayEquals(classBytes, Files.readAllBytes(exported));
+
+        byte[] updatedBytes = new byte[]{5, 6, 7};
+        Files.write(source, updatedBytes);
+        assertEquals(exported, JarUtil.copyMatchedClass(source, analyzerTemp,
+                "BOOT-INF/classes/com/example/ApiHandler.class"));
+        assertArrayEquals(updatedBytes, Files.readAllBytes(exported));
+    }
+
+    @Test
+    void normalizesWarClassPrefixForExport() throws Exception {
+        Path analyzerTemp = tempDir.resolve("jar-analyzer-temp");
+        Path exported = JarUtil.classExportPath(analyzerTemp,
+                "WEB-INF\\classes\\org\\example\\Audit.class");
+
+        Path expected = tempDir.resolve(
+                "classes/org/example/Audit.class").toAbsolutePath().normalize();
+        assertEquals(expected, exported);
+    }
+
+    @Test
+    void rejectsUnsafeClassExportPaths() {
+        Path analyzerTemp = tempDir.resolve("jar-analyzer-temp");
+        assertThrows(IOException.class, () -> JarUtil.classExportPath(
+                analyzerTemp, "BOOT-INF/classes/../../escape.class"));
+        assertThrows(IOException.class, () -> JarUtil.classExportPath(
+                analyzerTemp, "/tmp/escape.class"));
+    }
+
     private void assertRejected(String entryName) {
         assertThrows(IOException.class,
                 () -> JarUtil.safeExtractionPath(tempDir, entryName));

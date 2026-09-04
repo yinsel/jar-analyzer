@@ -109,6 +109,18 @@ final class ClassNameFilter {
     }
 
     private static String normalizeClassName(String archiveClassName) {
+        String className = normalizeArchiveClassPath(archiveClassName);
+        while (className.startsWith("/")) {
+            className = className.substring(1);
+        }
+        if (className.endsWith(CLASS_SUFFIX)) {
+            className = className.substring(
+                    0, className.length() - CLASS_SUFFIX.length());
+        }
+        return className.replace('/', '.');
+    }
+
+    static String normalizeArchiveClassPath(String archiveClassName) {
         if (archiveClassName == null) {
             return "";
         }
@@ -123,15 +135,7 @@ final class ClassNameFilter {
                 className = className.substring(prefixIndex + WEB_CLASSES.length());
             }
         }
-
-        while (className.startsWith("/")) {
-            className = className.substring(1);
-        }
-        if (className.endsWith(CLASS_SUFFIX)) {
-            className = className.substring(
-                    0, className.length() - CLASS_SUFFIX.length());
-        }
-        return className.replace('/', '.');
+        return className;
     }
 
     /**

@@ -44,6 +44,7 @@ public interface Const {
     String docsUrl = "https://docs.qq.com/doc/DV3pKbG9GS0pJS0tk";
     String dbFile = "jar-analyzer.db";
     String tempDir = "jar-analyzer-temp";
+    String classesDir = "classes";
     String indexDir = "jar-analyzer-document";
     String downDir = "jar-analyzer-download";
     String OpcodeForm = "Jar Analyzer - Method Opcode";

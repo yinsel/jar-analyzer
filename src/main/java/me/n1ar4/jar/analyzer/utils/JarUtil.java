@@ -134,6 +134,50 @@ public class JarUtil {
         }
     }
 
+    static Path classExportPath(Path tempDir,
+                                String archiveClassName) throws IOException {
+        if (tempDir == null) {
+            throw new IOException("temp directory is null");
+        }
+        String classEntry = ClassNameFilter.normalizeArchiveClassPath(
+                archiveClassName);
+        if (!classEntry.endsWith(".class")) {
+            throw new IOException("invalid class entry name: " + archiveClassName);
+        }
+
+        Path absoluteTempDir = tempDir.toAbsolutePath().normalize();
+        Path parent = absoluteTempDir.getParent();
+        if (parent == null) {
+            throw new IOException("temp directory has no parent");
+        }
+        Path classesDir = parent.resolve(Const.classesDir);
+        return safeExtractionPath(classesDir, classEntry);
+    }
+
+    static Path copyMatchedClass(Path sourceClass,
+                                 Path tempDir,
+                                 String archiveClassName) throws IOException {
+        if (sourceClass == null) {
+            throw new IOException("source class is null");
+        }
+        Path target = classExportPath(tempDir, archiveClassName);
+        Files.copy(sourceClass, target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
+    }
+
+    private static void copyMatchedClassOrWarn(Path sourceClass,
+                                               Path tempDir,
+                                               String archiveClassName) {
+        try {
+            Path target = copyMatchedClass(
+                    sourceClass, tempDir, archiveClassName);
+            logger.debug("export matched class: {}", target);
+        } catch (IOException e) {
+            logger.warn("export matched class failed: {} ({})",
+                    archiveClassName, e.toString());
+        }
+    }
+
     private static Path safeExtractionPathOrNull(Path tempDir, String entryName) {
         try {
             return safeExtractionPath(tempDir, entryName);
@@ -234,6 +278,7 @@ public class JarUtil {
                                  LinkOption.NOFOLLOW_LINKS)) {
                         IOUtil.copy(input, output);
                     }
+                    copyMatchedClassOrWarn(fullPath, tmpDir, saveClass);
                     ClassFileEntity classFile = new ClassFileEntity(saveClass, fullPath, jarId);
                     classFile.setJarName("class");
                     classFileSet.add(classFile);
@@ -281,6 +326,8 @@ public class JarUtil {
                             continue;
                         }
                         copyArchiveEntry(jarFile, jarEntry, fullPath);
+                        copyMatchedClassOrWarn(
+                                fullPath, tmpDir, jarEntry.getName());
                         ClassFileEntity classFile = new ClassFileEntity(jarEntry.getName(), fullPath, jarId);
                         String splitStr;
                         if (OSUtil.isWindows()) {
@@ -334,6 +381,8 @@ public class JarUtil {
                         continue;
                     }
                     copyArchiveEntry(jarFile, jarEntry, fullPath);
+                    copyMatchedClassOrWarn(
+                            fullPath, tmpDir, jarEntry.getName());
                     ClassFileEntity classFile = new ClassFileEntity(jarEntry.getName(), fullPath, jarId);
                     String splitStr;
                     if (OSUtil.isWindows()) {
