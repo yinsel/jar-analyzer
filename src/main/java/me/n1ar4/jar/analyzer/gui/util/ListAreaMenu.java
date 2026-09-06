@@ -70,11 +70,21 @@ public class ListAreaMenu {
                 + commonRules() + "</ul>" + specific + "</body></html>";
     }
 
+    private static String classWildcardRules() {
+        return "<p><b>灵活通配（区分大小写）：</b></p><ul>" +
+                "<li><b>Handler*</b>：类名以 Handler 开头</li>" +
+                "<li><b>*Handler*</b>：全限定类名中包含 Handler</li>" +
+                "<li><b>*Handler</b>：全限定类名以 Handler 结尾</li>" +
+                "<li><b>com.*.service.*</b>：星号也可出现在包路径中</li>" +
+                "</ul>";
+    }
+
     /**
      * Starter 页签：类黑名单
      */
     public static String classBlackRules() {
-        return wrap("<p><b style='color:#D32F2F'>黑名单</b>：匹配（包前缀或类名精确）的类将被" +
+        return wrap(classWildcardRules() +
+                "<p><b style='color:#D32F2F'>黑名单</b>：匹配（包前缀、类名精确或通配模式）的类将被" +
                 "<b>排除</b>，不参与分析。黑名单为空则不过滤。</p>");
     }
 
@@ -82,7 +92,8 @@ public class ListAreaMenu {
      * Starter 页签：类白名单
      */
     public static String classWhiteRules() {
-        return wrap("<p><b style='color:#1565C0'>白名单</b>：仅<b>保留</b>匹配（包前缀或类名精确）" +
+        return wrap(classWildcardRules() +
+                "<p><b style='color:#1565C0'>白名单</b>：仅<b>保留</b>匹配（包前缀、类名精确或通配模式）" +
                 "的类。白名单为空或全为注释时不过滤全部保留。</p>" +
                 "<p><b style='color:#D32F2F'>注意：白名单写错会导致一个类都分析不到！</b>" +
                 "出现该情况时请右键恢复默认后重新分析。</p>");
