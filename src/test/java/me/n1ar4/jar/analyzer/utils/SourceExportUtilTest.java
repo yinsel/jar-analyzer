@@ -19,10 +19,10 @@ import org.objectweb.asm.Opcodes;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SourceExportUtilTest {
     @TempDir
@@ -41,13 +41,12 @@ class SourceExportUtilTest {
         String source = "package com.example;\n"
                 + "public class AuditService { String value = \"安全\"; }\n";
 
-        int exported = SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> source);
+        boolean exported = SourceExportUtil.export(
+                entity, source, analyzerTemp);
 
         Path expected = tempDir.resolve(
                 "sources/com/example/AuditService.java");
-        assertEquals(1, exported);
+        assertTrue(exported);
         assertEquals(source, new String(
                 Files.readAllBytes(expected), StandardCharsets.UTF_8));
     }
@@ -62,11 +61,11 @@ class SourceExportUtilTest {
         ClassFileEntity entity = new ClassFileEntity(
                 "demo/Outer$Nested.class", classFile, 1);
 
-        int exported = SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> "package demo; class Outer$Nested {}\n");
+        boolean exported = SourceExportUtil.export(
+                entity, "package demo; class Outer$Nested {}\n",
+                analyzerTemp);
 
-        assertEquals(1, exported);
+        assertTrue(exported);
         assertEquals("package demo; class Outer$Nested {}\n",
                 new String(Files.readAllBytes(tempDir.resolve(
                         "sources/demo/Outer$Nested.java")),
@@ -83,11 +82,10 @@ class SourceExportUtilTest {
         ClassFileEntity entity = new ClassFileEntity(
                 "demo/Empty.class", classFile, 1);
 
-        int exported = SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> null);
+        boolean exported = SourceExportUtil.export(
+                entity, null, analyzerTemp);
 
-        assertEquals(0, exported);
+        assertFalse(exported);
         assertFalse(Files.exists(tempDir.resolve("sources/demo/Empty.java")));
     }
 
@@ -102,12 +100,12 @@ class SourceExportUtilTest {
                 "demo/Current.class", classFile, 1);
         Path target = tempDir.resolve("sources/demo/Current.java");
 
-        assertEquals(1, SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> "package demo; class Current { int oldValue; }\n"));
-        assertEquals(1, SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> "package demo; class Current { int newValue; }\n"));
+        assertTrue(SourceExportUtil.export(entity,
+                "package demo; class Current { int oldValue; }\n",
+                analyzerTemp));
+        assertTrue(SourceExportUtil.export(entity,
+                "package demo; class Current { int newValue; }\n",
+                analyzerTemp));
 
         assertEquals("package demo; class Current { int newValue; }\n",
                 new String(Files.readAllBytes(target), StandardCharsets.UTF_8));
@@ -122,11 +120,10 @@ class SourceExportUtilTest {
         ClassFileEntity entity = new ClassFileEntity(
                 "BOOT-INF/classes/../../escape.class", classFile, 1);
 
-        int exported = SourceExportUtil.export(
-                Collections.singletonList(entity), analyzerTemp,
-                path -> "class Escape {}\n");
+        boolean exported = SourceExportUtil.export(
+                entity, "class Escape {}\n", analyzerTemp);
 
-        assertEquals(0, exported);
+        assertFalse(exported);
         assertFalse(Files.exists(tempDir.resolve("escape.java")));
     }
 

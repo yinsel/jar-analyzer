@@ -19,16 +19,17 @@ import me.n1ar4.jar.analyzer.core.reference.ClassReference;
 import me.n1ar4.jar.analyzer.core.reference.MethodReference;
 import me.n1ar4.jar.analyzer.engine.CoreEngine;
 import me.n1ar4.jar.analyzer.engine.CoreHelper;
+import me.n1ar4.jar.analyzer.engine.index.IndexPluginsSupport;
 import me.n1ar4.jar.analyzer.entity.ClassFileEntity;
 import me.n1ar4.jar.analyzer.gui.MainForm;
 import me.n1ar4.jar.analyzer.gui.ModeSelector;
 import me.n1ar4.jar.analyzer.gui.util.LogUtil;
 import me.n1ar4.jar.analyzer.gui.util.MenuUtil;
+import me.n1ar4.jar.analyzer.lucene.LuceneBuildListener;
 import me.n1ar4.jar.analyzer.starter.Const;
 import me.n1ar4.jar.analyzer.utils.CoreUtil;
 import me.n1ar4.jar.analyzer.utils.DirUtil;
 import me.n1ar4.jar.analyzer.utils.IOUtil;
-import me.n1ar4.jar.analyzer.utils.SourceExportUtil;
 import me.n1ar4.jar.analyzer.utils.StackMapFrameHandler;
 import me.n1ar4.log.LogManager;
 import me.n1ar4.log.Logger;
@@ -56,7 +57,7 @@ public class CoreRunner {
     }
 
     public static void run(Path jarPath, Path rtJarPath, boolean fixClass,
-                           boolean exportSources, JDialog dialog) {
+                           boolean buildIndexAndExportSources, JDialog dialog) {
         // Clear corrupted files tracking at the start of each analysis
         AnalyzeEnv.corruptedFiles.clear();
 
@@ -178,15 +179,6 @@ public class CoreRunner {
             cfs = CoreUtil.getAllClassesFromJars(jarList, jarIdMap);
         }
 
-        if (exportSources) {
-            int exported = SourceExportUtil.export(
-                    cfs, Paths.get(Const.tempDir));
-            String result = "export matched source code: "
-                    + exported + "/" + cfs.size();
-            logger.info(result);
-            LogUtil.info(result);
-        }
-
         // BUG CLASS NAME
         for (ClassFileEntity cf : cfs) {
             String className = cf.getClassName();
@@ -228,6 +220,40 @@ public class CoreRunner {
                 }
                 cf.setClassName(className);
                 cf.setPath(Paths.get(className));
+            }
+        }
+
+        if (buildIndexAndExportSources) {
+            try {
+                IndexPluginsSupport.IndexBuildResult indexResult =
+                        IndexPluginsSupport.initIndexAndExportSources(
+                                cfs, Paths.get(Const.tempDir));
+                String result = "source export and active index build: "
+                        + "decompiled=" + indexResult.getDecompiled()
+                        + "/" + indexResult.getTotal()
+                        + ", exported=" + indexResult.getExported()
+                        + ", indexed=" + indexResult.getIndexed()
+                        + ", decompile-failed="
+                        + indexResult.getDecompileFailed()
+                        + ", export-failed="
+                        + indexResult.getExportFailed()
+                        + ", index-failed="
+                        + indexResult.getIndexFailed();
+                logger.info(result);
+                LogUtil.info(result);
+                if (indexResult.isIndexBuilt()) {
+                    LuceneBuildListener.markActiveBuildComplete();
+                } else {
+                    LogUtil.warn("active index build produced no searchable source");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.warn("source export and active index build interrupted");
+                LogUtil.warn("source export and active index build interrupted");
+            } catch (Exception e) {
+                logger.warn("source export and active index build failed: {}",
+                        e.toString());
+                LogUtil.warn("source export and active index build failed");
             }
         }
 

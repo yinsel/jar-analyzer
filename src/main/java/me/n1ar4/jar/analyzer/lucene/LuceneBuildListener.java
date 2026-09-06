@@ -22,6 +22,12 @@ public class LuceneBuildListener implements ActionListener {
     public static volatile boolean usePass = false;
     public static volatile boolean once = false;
 
+    public static void markActiveBuildComplete() {
+        usePass = false;
+        once = true;
+        IndexPluginsSupport.setUseActive(true);
+    }
+
     @Override
     public void actionPerformed(ActionEvent e) {
         JDialog dialog = ProcessDialog.createProgressDialog(LuceneSearchForm.getInstance().getRootPanel());
@@ -47,14 +53,12 @@ public class LuceneBuildListener implements ActionListener {
                             "create lucene index error");
                     dialog.dispose();
                 } else {
-                    once = true;
-
                     // FIX 2024/11/19
                     // 主动构建结束后不应该再次尝试被动方式
-                    IndexPluginsSupport.setUseActive(true);
+                    markActiveBuildComplete();
 
                     JOptionPane.showMessageDialog(LuceneSearchForm.getInstance().getRootPanel(),
-                            "create lucene index finish");
+                            "create lucene index and export sources finish");
                     dialog.dispose();
                 }
             } catch (Exception ex) {

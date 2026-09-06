@@ -1308,9 +1308,9 @@ public class MainForm {
                 instance.resolveJarsInJarCheckBox.setText("解决内嵌JAR问题");
                 instance.autoSaveCheckBox.setText("自动保存");
                 instance.deleteTempCheckBox.setText("在启动引擎前删除旧缓存");
-                instance.exportSourceCheckBox.setText("导出源代码");
+                instance.exportSourceCheckBox.setText("主动构建索引并导出源代码");
                 instance.exportSourceCheckBox.setToolTipText(
-                        "将匹配类的反编译源码按包结构导出到 sources 目录");
+                        "主动构建完整索引，并将匹配类源码按包结构导出到 sources 目录");
                 instance.autoFindRtJarCheckBox.setText("自动搜索RT.JAR");
                 instance.addRtJarWhenCheckBox.setText("分析时添加RT.JAR");
                 instance.startEngineButton.setText("启动");
@@ -1436,9 +1436,9 @@ public class MainForm {
                 instance.resolveJarsInJarCheckBox.setText("Resolve Jars in Jar");
                 instance.autoSaveCheckBox.setText("Auto Save");
                 instance.deleteTempCheckBox.setText("Delete Temp Dir Before Build");
-                instance.exportSourceCheckBox.setText("Export Source Code");
+                instance.exportSourceCheckBox.setText("Build Active Index and Export Source Code");
                 instance.exportSourceCheckBox.setToolTipText(
-                        "Export decompiled matched classes to the sources directory by package");
+                        "Build the full active index and export matched sources by package");
                 instance.autoFindRtJarCheckBox.setText("Auto Find rt.jar");
                 instance.addRtJarWhenCheckBox.setText("Add rt.jar to Analyze");
                 instance.startEngineButton.setText("Start");
@@ -2189,8 +2189,8 @@ public class MainForm {
         deleteTempCheckBox.setText("Delete Temp Dir Before Build");
         SwingLayout.add(chosePanel, deleteTempCheckBox, 5, 5, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
         exportSourceCheckBox = new JCheckBox();
-        exportSourceCheckBox.setText("Export Source Code");
-        exportSourceCheckBox.setToolTipText("Export decompiled matched classes to the sources directory by package");
+        exportSourceCheckBox.setText("Build Active Index and Export Source Code");
+        exportSourceCheckBox.setToolTipText("Build the full active index and export matched sources by package");
         SwingLayout.add(chosePanel, exportSourceCheckBox, 5, 6, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
         infoPanel = new JPanel();
         SwingLayout.configureGrid(infoPanel, 5, 3, new Insets(0, 0, 0, 0), -1, -1);

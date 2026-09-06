@@ -10,7 +10,6 @@
 
 package me.n1ar4.jar.analyzer.utils;
 
-import me.n1ar4.jar.analyzer.engine.DecompileEngine;
 import me.n1ar4.jar.analyzer.entity.ClassFileEntity;
 import me.n1ar4.jar.analyzer.starter.Const;
 import me.n1ar4.log.LogManager;
@@ -20,10 +19,12 @@ import org.objectweb.asm.ClassReader;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
 
 /**
  * Exports decompiled matched classes beside the bytecode export directory.
@@ -34,51 +35,59 @@ public final class SourceExportUtil {
     private SourceExportUtil() {
     }
 
-    public static int export(List<ClassFileEntity> classFiles, Path tempDir) {
-        // Paths under the extraction directory are reused between builds.
-        // Clear path-keyed decompiler results so exported sources always match
-        // the class bytes collected for the current analysis.
-        DecompileEngine.cleanCache();
-        return export(classFiles, tempDir, DecompileEngine::decompile);
+    /**
+     * Writes source code that has already been produced by the active index
+     * build. This method deliberately does not invoke a decompiler: the same
+     * decompilation result is consumed by both source export and Lucene.
+     */
+    public static boolean export(ClassFileEntity classFile, String source,
+                                 Path tempDir) {
+        if (classFile == null || classFile.getPath() == null
+                || source == null || source.trim().isEmpty()) {
+            return false;
+        }
+
+        try {
+            String internalName = resolveInternalName(classFile);
+            Path target = sourceExportPath(tempDir, internalName);
+            writeAtomically(target, source);
+            logger.debug("export matched source: {}", target);
+            return true;
+        } catch (Exception e) {
+            logger.warn("export matched source failed: {} ({})",
+                    classFile.getClassName(), e.toString());
+            return false;
+        }
     }
 
-    static int export(List<ClassFileEntity> classFiles, Path tempDir,
-                      SourceDecompiler decompiler) {
-        if (classFiles == null || classFiles.isEmpty()) {
-            return 0;
+    private static void writeAtomically(Path target, String source)
+            throws IOException {
+        Path parent = target.getParent();
+        if (parent == null) {
+            throw new IOException("source target has no parent");
         }
 
-        int exported = 0;
-        for (ClassFileEntity classFile : classFiles) {
-            if (classFile == null || classFile.getPath() == null) {
-                continue;
+        Path temporary = Files.createTempFile(
+                parent, "." + target.getFileName(), ".tmp");
+        try {
+            try (OutputStream output = Files.newOutputStream(
+                    temporary,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    StandardOpenOption.WRITE,
+                    LinkOption.NOFOLLOW_LINKS)) {
+                output.write(source.getBytes(StandardCharsets.UTF_8));
             }
             try {
-                String source = decompiler.decompile(classFile.getPath());
-                if (source == null || source.trim().isEmpty()) {
-                    logger.warn("export matched source returned no code: {}",
-                            classFile.getClassName());
-                    continue;
-                }
-
-                String internalName = resolveInternalName(classFile);
-                Path target = sourceExportPath(tempDir, internalName);
-                try (OutputStream output = java.nio.file.Files.newOutputStream(
-                        target,
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.TRUNCATE_EXISTING,
-                        StandardOpenOption.WRITE,
-                        LinkOption.NOFOLLOW_LINKS)) {
-                    output.write(source.getBytes(StandardCharsets.UTF_8));
-                }
-                exported++;
-                logger.debug("export matched source: {}", target);
-            } catch (Exception e) {
-                logger.warn("export matched source failed: {} ({})",
-                        classFile.getClassName(), e.toString());
+                Files.move(temporary, target,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, target,
+                        StandardCopyOption.REPLACE_EXISTING);
             }
+        } finally {
+            Files.deleteIfExists(temporary);
         }
-        return exported;
     }
 
     static Path sourceExportPath(Path tempDir,
@@ -123,10 +132,5 @@ public final class SourceExportUtil {
         }
         return archiveName.substring(0,
                 archiveName.length() - ".class".length());
-    }
-
-    @FunctionalInterface
-    interface SourceDecompiler {
-        String decompile(Path classFilePath);
     }
 }

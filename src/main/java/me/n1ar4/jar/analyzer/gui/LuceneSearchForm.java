@@ -217,7 +217,7 @@ public class LuceneSearchForm {
         luceneSizeLabel.setText("当前索引大小：0 MB");
         SwingLayout.add(searchOptionsPanel, luceneSizeLabel, 1, 0, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, SwingLayout.SIZEPOLICY_FIXED, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
         luceneBuildBtn = new JButton();
-        luceneBuildBtn.setText("手动构建完整索引");
+        luceneBuildBtn.setText("主动构建索引并导出源代码");
         SwingLayout.add(searchOptionsPanel, luceneBuildBtn, 1, 1, 1, 2, GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
         caseCheckBox = new JCheckBox();
         caseCheckBox.setText("大小写敏感");
