@@ -135,6 +135,7 @@ public class MainForm {
     private JList<MethodResult> methodImplList;
     private JCheckBox deleteTempCheckBox;
     private JCheckBox exportSourceCheckBox;
+    private JCheckBox extractClassesOnlyCheckBox;
     private JList<MethodResult> superImplList;
     private JPanel analysis;
     private JButton cfgBtn;
@@ -701,6 +702,10 @@ public class MainForm {
         return exportSourceCheckBox;
     }
 
+    public JCheckBox getExtractClassesOnlyCheckBox() {
+        return extractClassesOnlyCheckBox;
+    }
+
     public JList<MethodResult> getSuperImplList() {
         return superImplList;
     }
@@ -980,6 +985,17 @@ public class MainForm {
         searchStrText.setEnabled(false);
         deleteTempCheckBox.setSelected(true);
         exportSourceCheckBox.setSelected(false);
+        extractClassesOnlyCheckBox.setSelected(false);
+        exportSourceCheckBox.addActionListener(e -> {
+            if (exportSourceCheckBox.isSelected()) {
+                extractClassesOnlyCheckBox.setSelected(false);
+            }
+        });
+        extractClassesOnlyCheckBox.addActionListener(e -> {
+            if (extractClassesOnlyCheckBox.isSelected()) {
+                exportSourceCheckBox.setSelected(false);
+            }
+        });
         LogUtil.setT(logArea);
         SyntaxAreaHelper.buildJava(codePanel);
         engineVal.setText("CLOSED");
@@ -1311,6 +1327,9 @@ public class MainForm {
                 instance.exportSourceCheckBox.setText("主动构建索引并导出源代码");
                 instance.exportSourceCheckBox.setToolTipText(
                         "主动构建完整索引，并将匹配类源码按包结构导出到 sources 目录");
+                instance.extractClassesOnlyCheckBox.setText("仅提取 classes");
+                instance.extractClassesOnlyCheckBox.setToolTipText(
+                        "仅将匹配的 class 文件按包结构导出到 classes 目录，不执行分析或反编译");
                 instance.autoFindRtJarCheckBox.setText("自动搜索RT.JAR");
                 instance.addRtJarWhenCheckBox.setText("分析时添加RT.JAR");
                 instance.startEngineButton.setText("启动");
@@ -1439,6 +1458,9 @@ public class MainForm {
                 instance.exportSourceCheckBox.setText("Build Active Index and Export Source Code");
                 instance.exportSourceCheckBox.setToolTipText(
                         "Build the full active index and export matched sources by package");
+                instance.extractClassesOnlyCheckBox.setText("Extract Classes Only");
+                instance.extractClassesOnlyCheckBox.setToolTipText(
+                        "Export matched class files by package without analysis or decompilation");
                 instance.autoFindRtJarCheckBox.setText("Auto Find rt.jar");
                 instance.addRtJarWhenCheckBox.setText("Add rt.jar to Analyze");
                 instance.startEngineButton.setText("Start");
@@ -2192,6 +2214,10 @@ public class MainForm {
         exportSourceCheckBox.setText("Build Active Index and Export Source Code");
         exportSourceCheckBox.setToolTipText("Build the full active index and export matched sources by package");
         SwingLayout.add(chosePanel, exportSourceCheckBox, 5, 6, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
+        extractClassesOnlyCheckBox = new JCheckBox();
+        extractClassesOnlyCheckBox.setText("Extract Classes Only");
+        extractClassesOnlyCheckBox.setToolTipText("Export matched class files by package without analysis or decompilation");
+        SwingLayout.add(chosePanel, extractClassesOnlyCheckBox, 6, 6, 1, 1, GridBagConstraints.WEST, GridBagConstraints.NONE, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_FIXED, null, null, null, 0);
         infoPanel = new JPanel();
         SwingLayout.configureGrid(infoPanel, 5, 3, new Insets(0, 0, 0, 0), -1, -1);
         SwingLayout.add(startPanel, infoPanel, 1, 0, 1, 1, GridBagConstraints.CENTER, GridBagConstraints.BOTH, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, SwingLayout.SIZEPOLICY_CAN_SHRINK | SwingLayout.SIZEPOLICY_CAN_GROW, null, null, null, 0);

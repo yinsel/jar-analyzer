@@ -19,6 +19,7 @@ import me.n1ar4.jar.analyzer.gui.util.LogUtil;
 import me.n1ar4.jar.analyzer.gui.util.MenuUtil;
 import me.n1ar4.jar.analyzer.gui.util.ProcessDialog;
 import me.n1ar4.jar.analyzer.starter.Const;
+import me.n1ar4.jar.analyzer.utils.CoreUtil;
 import me.n1ar4.jar.analyzer.utils.DirUtil;
 import me.n1ar4.jar.analyzer.utils.StringUtil;
 
@@ -28,13 +29,18 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class BuildAction {
     public static void start(String path) {
         Path od = Paths.get(Const.dbFile);
         MainForm.getInstance().getFileText().setText(path);
+        boolean extractClassesOnly = MainForm.getInstance()
+                .getExtractClassesOnlyCheckBox().isSelected();
 
-        if (Files.exists(od)) {
+        if (!extractClassesOnly && Files.exists(od)) {
             LogUtil.info("jar-analyzer database exist");
             int res = JOptionPane.showConfirmDialog(MainForm.getInstance().getMasterPanel(),
                     "<html>" +
@@ -99,6 +105,22 @@ public class BuildAction {
             return;
         }
 
+        if (extractClassesOnly) {
+            Path inputPath = Paths.get(path);
+            if (!Files.exists(inputPath)) {
+                JOptionPane.showMessageDialog(
+                        MainForm.getInstance().getMasterPanel(),
+                        "cannot extract classes - input does not exist");
+                return;
+            }
+            JDialog dialog = ProcessDialog.createProgressDialog(
+                    MainForm.getInstance().getMasterPanel());
+            MainForm.getInstance().getStartBuildDatabaseButton()
+                    .setEnabled(false);
+            new Thread(() -> runClassExtraction(inputPath, dialog)).start();
+            return;
+        }
+
         boolean fixClass = MenuUtil.getFixClassPathConfig().getState();
         boolean buildIndexAndExportSources = MainForm.getInstance()
                 .getExportSourceCheckBox().isSelected();
@@ -125,6 +147,36 @@ public class BuildAction {
                     fixClass, buildIndexAndExportSources, dialog)).start();
         }
         MainForm.getInstance().getStartBuildDatabaseButton().setEnabled(false);
+    }
+
+    private static void runClassExtraction(Path inputPath, JDialog dialog) {
+        SwingUtilities.invokeLater(() -> dialog.setVisible(true));
+        try {
+            MainForm.getInstance().getBuildBar().setValue(10);
+            List<String> files = new ArrayList<>();
+            if (Files.isDirectory(inputPath)) {
+                files.addAll(DirUtil.GetFiles(
+                        inputPath.toAbsolutePath().toString()));
+            } else {
+                files.add(inputPath.toAbsolutePath().toString());
+            }
+
+            int matched = CoreUtil.getAllClassesFromJars(
+                    files, Collections.emptyMap()).size();
+            String result = "extract classes only finish: matched=" + matched;
+            LogUtil.info(result);
+            MainForm.getInstance().getBuildBar().setValue(100);
+        } catch (Exception e) {
+            LogUtil.error("extract classes only failed: " + e.getMessage());
+            MainForm.getInstance().getBuildBar().setValue(0);
+        } finally {
+            SwingUtilities.invokeLater(() -> {
+                dialog.dispose();
+                MainForm.getInstance().getFileTree().refresh();
+                MainForm.getInstance().getStartBuildDatabaseButton()
+                        .setEnabled(true);
+            });
+        }
     }
 
     public static void run() {
