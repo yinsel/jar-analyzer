@@ -36,22 +36,41 @@ import java.util.regex.Pattern;
 
 public class IndexEngine {
     public static String initIndex(Map<String, String> analyzerMap) throws IOException {
-        IndexWriter indexWriter = IndexSingletonClass.getIndexWriter();
-
-        analyzerMap.forEach((key, value) -> {
-            Collection<Document> documents = new ArrayList<>();
-            String[] cut = StrUtil.cut(StrUtil.cleanBlank(StrUtil.removeAllLineBreaks(value)), 1800);
-            for (String string : cut) {
-                addDoc(key, string, documents);
-            }
-            try {
-                indexWriter.addDocuments(documents);
-                indexWriter.commit();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
+        addToIndex(analyzerMap);
+        commitIndex();
         return null;
+    }
+
+    /**
+     * Adds a batch without committing it. Full index builds may call this from
+     * multiple workers and perform one commit after every worker has finished.
+     */
+    public static int addToIndex(Map<String, String> analyzerMap) throws IOException {
+        if (analyzerMap == null || analyzerMap.isEmpty()) {
+            return 0;
+        }
+
+        Collection<Document> documents = new ArrayList<>();
+        for (Map.Entry<String, String> entry : analyzerMap.entrySet()) {
+            String[] cut = StrUtil.cut(StrUtil.cleanBlank(
+                    StrUtil.removeAllLineBreaks(entry.getValue())), 1800);
+            for (String string : cut) {
+                addDoc(entry.getKey(), string, documents);
+            }
+        }
+
+        if (!documents.isEmpty()) {
+            IndexSingletonClass.getIndexWriter().addDocuments(documents);
+        }
+        return analyzerMap.size();
+    }
+
+    public static void commitIndex() throws IOException {
+        IndexSingletonClass.getIndexWriter().commit();
+    }
+
+    public static void resetIndex() throws IOException {
+        IndexSingletonClass.reset();
     }
 
     private static void addDoc(String key, String string, Collection<Document> documents) {
@@ -122,6 +141,8 @@ public class IndexEngine {
         private static volatile IndexSearcher searcher = null;
         private static volatile IndexReader reader = null;
         private static volatile IndexWriter indexWriter = null;
+        private static volatile Directory readerDirectory = null;
+        private static volatile Directory writerDirectory = null;
 
         public static IndexSearcher getSearcher() throws IOException {
             if (searcher == null) {
@@ -139,8 +160,15 @@ public class IndexEngine {
             if (reader == null) {
                 synchronized (IndexSingletonClass.class) {
                     if (reader == null) {
-                        Directory directory = FSDirectory.open(Paths.get(IndexPluginsSupport.DocumentPath));
-                        reader = DirectoryReader.open(directory);
+                        readerDirectory = FSDirectory.open(
+                                Paths.get(IndexPluginsSupport.DocumentPath));
+                        try {
+                            reader = DirectoryReader.open(readerDirectory);
+                        } catch (IOException e) {
+                            readerDirectory.close();
+                            readerDirectory = null;
+                            throw e;
+                        }
                     }
                 }
             }
@@ -152,16 +180,69 @@ public class IndexEngine {
                 synchronized (IndexSingletonClass.class) {
 
                     if (indexWriter == null) {
-                        Directory directory = FSDirectory.open(Paths.get(IndexPluginsSupport.DocumentPath));
+                        writerDirectory = FSDirectory.open(
+                                Paths.get(IndexPluginsSupport.DocumentPath));
                         IndexWriterConfig conf = new IndexWriterConfig(new StandardAnalyzer());
                         conf.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
                         //优化了索引文件编码，提高存储效率
                         conf.setCodec(new Lucene70Codec(Lucene50StoredFieldsFormat.Mode.BEST_COMPRESSION));
-                        indexWriter = new IndexWriter(directory, conf);
+                        try {
+                            indexWriter = new IndexWriter(writerDirectory, conf);
+                        } catch (IOException e) {
+                            writerDirectory.close();
+                            writerDirectory = null;
+                            throw e;
+                        }
                     }
                 }
             }
             return indexWriter;
+        }
+
+        private static synchronized void reset() throws IOException {
+            IOException error = null;
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    error = e;
+                }
+            }
+            if (readerDirectory != null) {
+                try {
+                    readerDirectory.close();
+                } catch (IOException e) {
+                    if (error == null) {
+                        error = e;
+                    }
+                }
+            }
+            if (indexWriter != null) {
+                try {
+                    indexWriter.close();
+                } catch (IOException e) {
+                    if (error == null) {
+                        error = e;
+                    }
+                }
+            }
+            if (writerDirectory != null) {
+                try {
+                    writerDirectory.close();
+                } catch (IOException e) {
+                    if (error == null) {
+                        error = e;
+                    }
+                }
+            }
+            searcher = null;
+            reader = null;
+            indexWriter = null;
+            readerDirectory = null;
+            writerDirectory = null;
+            if (error != null) {
+                throw error;
+            }
         }
     }
 }

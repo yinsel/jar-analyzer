@@ -13,7 +13,6 @@ package me.n1ar4.jar.analyzer.utils;
 import me.n1ar4.jar.analyzer.core.AnalyzeEnv;
 import me.n1ar4.jar.analyzer.entity.ClassFileEntity;
 import me.n1ar4.jar.analyzer.gui.MainForm;
-import me.n1ar4.jar.analyzer.gui.util.ListParser;
 import me.n1ar4.jar.analyzer.gui.util.LogUtil;
 import me.n1ar4.jar.analyzer.starter.Const;
 import me.n1ar4.log.LogManager;
@@ -135,6 +134,50 @@ public class JarUtil {
         }
     }
 
+    static Path classExportPath(Path tempDir,
+                                String archiveClassName) throws IOException {
+        if (tempDir == null) {
+            throw new IOException("temp directory is null");
+        }
+        String classEntry = ClassNameFilter.normalizeArchiveClassPath(
+                archiveClassName);
+        if (!classEntry.endsWith(".class")) {
+            throw new IOException("invalid class entry name: " + archiveClassName);
+        }
+
+        Path absoluteTempDir = tempDir.toAbsolutePath().normalize();
+        Path parent = absoluteTempDir.getParent();
+        if (parent == null) {
+            throw new IOException("temp directory has no parent");
+        }
+        Path classesDir = parent.resolve(Const.classesDir);
+        return safeExtractionPath(classesDir, classEntry);
+    }
+
+    static Path copyMatchedClass(Path sourceClass,
+                                 Path tempDir,
+                                 String archiveClassName) throws IOException {
+        if (sourceClass == null) {
+            throw new IOException("source class is null");
+        }
+        Path target = classExportPath(tempDir, archiveClassName);
+        Files.copy(sourceClass, target, StandardCopyOption.REPLACE_EXISTING);
+        return target;
+    }
+
+    private static void copyMatchedClassOrWarn(Path sourceClass,
+                                               Path tempDir,
+                                               String archiveClassName) {
+        try {
+            Path target = copyMatchedClass(
+                    sourceClass, tempDir, archiveClassName);
+            logger.debug("export matched class: {}", target);
+        } catch (IOException e) {
+            logger.warn("export matched class failed: {} ({})",
+                    archiveClassName, e.toString());
+        }
+    }
+
     private static Path safeExtractionPathOrNull(Path tempDir, String entryName) {
         try {
             return safeExtractionPath(tempDir, entryName);
@@ -157,78 +200,7 @@ public class JarUtil {
     }
 
     private static boolean shouldRun(String whiteText, String blackText, String saveClass) {
-        boolean whiteDoIt = false;
-
-        // 处理 BOOT-INF WEB-INF 的问题
-        int i = saveClass.indexOf("classes");
-        if (i > 0) {
-            if (saveClass.contains("BOOT-INF") || saveClass.contains("WEB-INF")) {
-                saveClass = saveClass.substring(i + 8, saveClass.length() - 6);
-            } else {
-                saveClass = saveClass.substring(0, saveClass.length() - 6);
-            }
-        }
-
-        if (whiteText != null && !StringUtil.isNull(whiteText)) {
-            ArrayList<String> data = ListParser.parse(whiteText);
-            String className = saveClass;
-            if (className.endsWith(".class")) {
-                className = className.substring(0, className.length() - 6);
-            }
-            for (String s : data) {
-                // PACAKGE
-                if (s.endsWith("/")) {
-                    if (className.startsWith(s)) {
-                        whiteDoIt = true;
-                        break;
-                    }
-                } else {
-                    // CLASSNAME
-                    if (className.equals(s)) {
-                        whiteDoIt = true;
-                        break;
-                    }
-                }
-            }
-            if (data == null || data.size() == 0) {
-                whiteDoIt = true;
-            }
-        } else {
-            whiteDoIt = true;
-        }
-
-        if (!whiteDoIt) {
-            return false;
-        }
-
-        boolean doIt = true;
-        if (blackText != null && !StringUtil.isNull(blackText)) {
-            ArrayList<String> data = ListParser.parse(blackText);
-            String className = saveClass;
-            if (className.endsWith(".class")) {
-                className = className.substring(0, className.length() - 6);
-            }
-            for (String s : data) {
-                // com.a.TestClass
-                if (className.equals(s)) {
-                    doIt = false;
-                    break;
-                }
-                // com.a.
-                if (s.endsWith("/")) {
-                    if (className.startsWith(s)) {
-                        doIt = false;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!doIt) {
-            return false;
-        }
-
-        return true;
+        return ClassNameFilter.shouldInclude(saveClass, whiteText, blackText);
     }
 
     private static void resolve(Integer jarId, String jarPathStr, Path tmpDir) {
@@ -306,6 +278,7 @@ public class JarUtil {
                                  LinkOption.NOFOLLOW_LINKS)) {
                         IOUtil.copy(input, output);
                     }
+                    copyMatchedClassOrWarn(fullPath, tmpDir, saveClass);
                     ClassFileEntity classFile = new ClassFileEntity(saveClass, fullPath, jarId);
                     classFile.setJarName("class");
                     classFileSet.add(classFile);
@@ -353,6 +326,8 @@ public class JarUtil {
                             continue;
                         }
                         copyArchiveEntry(jarFile, jarEntry, fullPath);
+                        copyMatchedClassOrWarn(
+                                fullPath, tmpDir, jarEntry.getName());
                         ClassFileEntity classFile = new ClassFileEntity(jarEntry.getName(), fullPath, jarId);
                         String splitStr;
                         if (OSUtil.isWindows()) {
@@ -406,6 +381,8 @@ public class JarUtil {
                         continue;
                     }
                     copyArchiveEntry(jarFile, jarEntry, fullPath);
+                    copyMatchedClassOrWarn(
+                            fullPath, tmpDir, jarEntry.getName());
                     ClassFileEntity classFile = new ClassFileEntity(jarEntry.getName(), fullPath, jarId);
                     String splitStr;
                     if (OSUtil.isWindows()) {

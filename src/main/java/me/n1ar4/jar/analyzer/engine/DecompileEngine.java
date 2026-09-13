@@ -41,7 +41,7 @@ public class DecompileEngine {
             "// Jar Analyzer by 4ra1n\n" +
             "// (powered by FernFlower decompiler)\n" +
             "//\n";
-    private static LRUCache lruCache = new LRUCache();
+    private static volatile LRUCache lruCache = new LRUCache();
 
     public static String getFERN_PREFIX() {
         return FERN_PREFIX;
@@ -123,16 +123,12 @@ public class DecompileEngine {
                 }
                 Path dirPath = Paths.get(Const.tempDir);
                 Path deDirPath = dirPath.resolve(Paths.get(JAVA_DIR));
-                if (!Files.exists(deDirPath)) {
-                    Files.createDirectory(deDirPath);
-                }
-                // 并发下不同线程使用不同子目录，避免临时文件互相覆盖
-                if (McpContext.isInMcp()) {
-                    deDirPath = deDirPath.resolve("t-" + Thread.currentThread().getId());
-                    if (!Files.exists(deDirPath)) {
-                        Files.createDirectories(deDirPath);
-                    }
-                }
+                // Active index builds decompile in parallel. Every thread must
+                // use an isolated output directory because Fernflower writes a
+                // simple file name (for example User.java) without its package.
+                deDirPath = deDirPath.resolve(
+                        "t-" + Thread.currentThread().getId());
+                Files.createDirectories(deDirPath);
                 String javaDir = deDirPath.toAbsolutePath().toString();
                 String fileName = classFilePath.getFileName().toString();
 
