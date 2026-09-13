@@ -72,7 +72,7 @@ public class ListAreaMenu {
 
     private static String classWildcardRules() {
         return "<p><b>灵活通配（区分大小写）：</b></p><ul>" +
-                "<li><b>Handler*</b>：类名以 Handler 开头</li>" +
+                "<li><b>Handler*</b>：简单类名以 Handler 开头（不匹配包名）</li>" +
                 "<li><b>*Handler*</b>：全限定类名中包含 Handler</li>" +
                 "<li><b>*Handler</b>：全限定类名以 Handler 结尾</li>" +
                 "<li><b>com.*.service.*</b>：星号也可出现在包路径中</li>" +

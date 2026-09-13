@@ -38,7 +38,12 @@ final class ClassNameFilter {
     }
 
     static boolean matches(String archiveClassName, String rawRule) {
-        String className = normalizeClassName(archiveClassName);
+        return matchesNormalized(
+                normalizeClassName(archiveClassName), rawRule);
+    }
+
+    private static boolean matchesNormalized(String className,
+                                             String rawRule) {
         String rule = normalizeRule(rawRule);
         if (className.isEmpty() || rule.isEmpty()) {
             return false;
@@ -51,26 +56,31 @@ final class ClassNameFilter {
             return className.equals(rule);
         }
 
-        // An unqualified rule without a leading wildcard describes the start
-        // of the class name. A leading wildcard explicitly allows matching
-        // anywhere in the fully qualified name.
+        // An unqualified rule without a leading wildcard applies only to the
+        // simple class name. For example, "Example*" matches
+        // "com.acme.ExampleService", but not "ExampleService.api.Controller".
+        // A leading wildcard explicitly allows matching anywhere in the
+        // fully qualified class name.
         if (rule.indexOf('.') < 0 && !rule.startsWith("*")) {
-            int separator = className.lastIndexOf('.');
-            String simpleName = separator < 0
-                    ? className
-                    : className.substring(separator + 1);
-            return globMatches(simpleName, rule);
+            return globMatches(simpleClassName(className), rule);
         }
         return globMatches(className, rule);
     }
 
     private static boolean matchesAny(String className, List<String> rules) {
         for (String rule : rules) {
-            if (matches(className, rule)) {
+            if (matchesNormalized(className, rule)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private static String simpleClassName(String className) {
+        int separator = className.lastIndexOf('.');
+        return separator < 0
+                ? className
+                : className.substring(separator + 1);
     }
 
     private static List<String> parseRules(String text) {

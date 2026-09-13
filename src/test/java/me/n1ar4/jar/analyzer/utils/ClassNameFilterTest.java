@@ -25,6 +25,27 @@ class ClassNameFilterTest {
     }
 
     @Test
+    void trailingWildcardTargetsSimpleClassNameNotPackageName() {
+        assertTrue(ClassNameFilter.matches(
+                "com.examplexxx", "example*"));
+        assertTrue(ClassNameFilter.matches(
+                "com/examplexxx.class", "example*"));
+        assertFalse(ClassNameFilter.matches(
+                "examplexxx.xxx", "example*"));
+        assertFalse(ClassNameFilter.matches(
+                "examplexxx/xxx.class", "example*"));
+
+        assertTrue(ClassNameFilter.shouldInclude(
+                "com/examplexxx.class", "example*", ""));
+        assertFalse(ClassNameFilter.shouldInclude(
+                "examplexxx/xxx.class", "example*", ""));
+        assertFalse(ClassNameFilter.shouldInclude(
+                "com/examplexxx.class", "", "example*"));
+        assertTrue(ClassNameFilter.shouldInclude(
+                "examplexxx/xxx.class", "", "example*"));
+    }
+
+    @Test
     void surroundingWildcardsMatchAnywhere() {
         assertTrue(ClassNameFilter.matches(
                 "com.abc.markerClient", "*marker*"));
