@@ -25,24 +25,30 @@ class ClassNameFilterTest {
     }
 
     @Test
-    void trailingWildcardTargetsSimpleClassNameNotPackageName() {
+    void trailingWildcardTargetsEveryQualifiedNamePart() {
         assertTrue(ClassNameFilter.matches(
                 "com.examplexxx", "example*"));
         assertTrue(ClassNameFilter.matches(
                 "com/examplexxx.class", "example*"));
-        assertFalse(ClassNameFilter.matches(
+        assertTrue(ClassNameFilter.matches(
                 "examplexxx.xxx", "example*"));
-        assertFalse(ClassNameFilter.matches(
+        assertTrue(ClassNameFilter.matches(
                 "examplexxx/xxx.class", "example*"));
+        assertTrue(ClassNameFilter.matches(
+                "com.examplexxx.service.Controller", "example*"));
+        assertFalse(ClassNameFilter.matches(
+                "com.fooexample.service.Controller", "example*"));
 
         assertTrue(ClassNameFilter.shouldInclude(
                 "com/examplexxx.class", "example*", ""));
-        assertFalse(ClassNameFilter.shouldInclude(
+        assertTrue(ClassNameFilter.shouldInclude(
                 "examplexxx/xxx.class", "example*", ""));
         assertFalse(ClassNameFilter.shouldInclude(
                 "com/examplexxx.class", "", "example*"));
-        assertTrue(ClassNameFilter.shouldInclude(
+        assertFalse(ClassNameFilter.shouldInclude(
                 "examplexxx/xxx.class", "", "example*"));
+        assertTrue(ClassNameFilter.shouldInclude(
+                "com/fooexample/Controller.class", "", "example*"));
     }
 
     @Test

@@ -56,13 +56,12 @@ final class ClassNameFilter {
             return className.equals(rule);
         }
 
-        // An unqualified rule without a leading wildcard applies only to the
-        // simple class name. For example, "Example*" matches
-        // "com.acme.ExampleService", but not "ExampleService.api.Controller".
-        // A leading wildcard explicitly allows matching anywhere in the
-        // fully qualified class name.
+        // An unqualified rule without a leading wildcard applies to every
+        // dot-separated part of the fully qualified class name. For example,
+        // "Example*" matches both "com.ExampleService" and
+        // "ExampleService.api.Controller".
         if (rule.indexOf('.') < 0 && !rule.startsWith("*")) {
-            return globMatches(simpleClassName(className), rule);
+            return matchesAnyPart(className, rule);
         }
         return globMatches(className, rule);
     }
@@ -76,11 +75,18 @@ final class ClassNameFilter {
         return false;
     }
 
-    private static String simpleClassName(String className) {
-        int separator = className.lastIndexOf('.');
-        return separator < 0
-                ? className
-                : className.substring(separator + 1);
+    private static boolean matchesAnyPart(String className, String rule) {
+        int partStart = 0;
+        for (int i = 0; i <= className.length(); i++) {
+            if (i == className.length() || className.charAt(i) == '.') {
+                if (i > partStart && globMatches(
+                        className.substring(partStart, i), rule)) {
+                    return true;
+                }
+                partStart = i + 1;
+            }
+        }
+        return false;
     }
 
     private static List<String> parseRules(String text) {
